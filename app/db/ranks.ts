@@ -1,6 +1,3 @@
-import { UserDataReturnType } from "frames.js";
-import { UserIdentifierInput, parseIdentifier } from "../frame-std-input/user";
-import { NeynarAPIClient } from "@neynar/nodejs-sdk";
 import { kv } from "@vercel/kv";
 
 const TABLE_NAME = "ranks";
@@ -12,7 +9,6 @@ export async function setUserRanking(
   ranking: number | undefined = undefined
 ): Promise<number> {
   let scoreMember = { score: ranking ?? USER_INITIAL_RANKING, member: fid };
-  console.log("Setting user", fid, "with ranking", scoreMember);
   let addResponse = await kv.zadd(TABLE_NAME, scoreMember);
   if (addResponse === null) {
     throw new Error("Failed to add user ranking");
@@ -21,7 +17,6 @@ export async function setUserRanking(
 }
 
 export async function getUser(user: number): Promise<UserRanking> {
-  console.log("Getting user", user);
   let rank = await getUserRanking(user);
   let score = await getUserScore(user);
   let userRanking: UserRanking = { fid: user, ranking: rank, score: score };

@@ -26,7 +26,6 @@ const reducer: FrameReducer<State> = (state, previousFrame) => {
 
 // This is a react server component only
 export default async function Root({
-  params,
   searchParams,
 }: NextServerPageProps) {
   const previousFrame = getPreviousFrame<State>(searchParams);
@@ -40,7 +39,7 @@ export default async function Root({
     throw new Error("Invalid frame payload");
   }
 
-  if (frameMessage) {
+  if (frameMessage && frameMessage.buttonIndex !== 3) {
     // put the state machine switch statement in here
     let rankMatch = await getRankMatch(state);
     if (rankMatch) {

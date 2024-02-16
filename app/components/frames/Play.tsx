@@ -45,10 +45,9 @@ export async function Play({
           <UserDetails user={leftUserDetails} />
           <div tw="flex p-3">vs</div>
           <UserDetails user={rightUserDetails} />
-          {/* <div>{`@${leftUserDetails.username} vs @${rightUserDetails.username}`}</div> */}
         </div>
       </FrameImage>
-      <FrameButton  action="post">{leftUserDetails.username}</FrameButton>
+      <FrameButton action="post">{leftUserDetails.username}</FrameButton>
       <FrameButton action="post">{rightUserDetails.username}</FrameButton>
       <FrameButton action="post">Leader Board</FrameButton>
     </FrameContainer>
@@ -56,16 +55,11 @@ export async function Play({
 }
 
 function UserDetails({ user }: { user: User }) {
-  console.log(user);
   return (
-    // <div tw="flex flex-col justify-center items-center">
-    //   // @ts-ignore
-    //   <img src={user.pfp.url} alt={`${user.username}`} />
-    //   <div>@{user.username}</div>
-    // </div>
     <div tw="flex flex-col justify-center items-center">
+      {/* @ts-ignore */}
       <img width={300} height={300} src={user.pfp.url} alt="Image" />
-      <div tw="flex">{user.username}</div>
+      <div tw="flex">@{user.username}</div>
     </div>
   );
 }
