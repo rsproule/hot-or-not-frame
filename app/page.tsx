@@ -8,6 +8,7 @@ import {
   getPreviousFrame,
   useFramesReducer,
   getFrameMessage,
+  PreviousFrame,
 } from "frames.js/next/server";
 import Link from "next/link";
 import { DEBUG_HUB_OPTIONS } from "./debug/constants";
@@ -17,17 +18,22 @@ import {
   getUser,
   setUserRanking,
 } from "./db/ranks";
+import { Home } from "./components/frames/Home";
+import { Play } from "./components/frames/Play";
+import { FrameActionDataParsedAndHubContext } from "frames.js";
 
+// Not using any local state, loading everything from server.
 type State = {};
+const initialState = {
+  seen: [],
+};
 
-const initialState = {};
-
-const reducer: FrameReducer<State> = (state, action) => {
+const reducer: FrameReducer<State> = (state, previousFrame) => {
   return state;
 };
 
 // This is a react server component only
-export default async function Home({
+export default async function Root({
   params,
   searchParams,
 }: NextServerPageProps) {
@@ -40,63 +46,20 @@ export default async function Home({
   if (frameMessage && !frameMessage?.isValid) {
     throw new Error("Invalid frame payload");
   }
-  console.log({ frameMessage });
 
-  const [state, dispatch] = useFramesReducer<State>(
-    reducer,
-    initialState,
-    previousFrame
-  );
+  // not used
+  const [state] = useFramesReducer<State>(reducer, initialState, previousFrame);
 
   // Here: do a server side side effect either sync or async (using await), such as minting an NFT if you want.
   // example: load the users credentials & check they have an NFT
 
-  console.log("info: state is:", state);
-
-  const baseUrl = process.env.NEXT_PUBLIC_HOST || "http://localhost:3000";
-
-  let l_user;
-  let r_user;
-
   if (frameMessage) {
-    const {
-      isValid,
-      buttonIndex,
-      inputText,
-      castId,
-      requesterFid,
-      casterFollowsRequester,
-      requesterFollowsCaster,
-      likedCast,
-      recastedCast,
-      requesterVerifiedAddresses,
-      requesterUserData,
-    } = frameMessage;
-
-    // if the user already exists, present them the side by side
-
-    let user;
-    try {
-      user = await getUser(requesterFid);
-    } catch (error) {
-      console.error("Failed to get user:", error);
-    }
-    if (user) {
-      console.log("info: frameMessage is:", frameMessage);
-      let occlusion = [
-        frameMessage?.requesterFid,
-        // ...(state.l_user ? [state.l_user.fid] : []),
-        // ...(state.r_user ? [state.r_user.fid] : []),
-      ];
-      l_user = await getRandomUser(occlusion);
-      r_user = await getRandomUser([...occlusion, l_user.fid]);
-    } else {
-      let newUser = await setUserRanking(requesterFid);
-      console.log("info: newUser is:", newUser);
-    }
+    // put the state machine switch statement in here
+    return await getFrame(previousFrame, frameMessage, state);
   }
 
-  // then, when done, return next frame
+  // return the home frame if there is nothing here
+  const baseUrl = process.env.NEXT_PUBLIC_HOST || "http://localhost:3000";
   return (
     <div className="p-4">
       frames.js starter kit. The Template Frame is on this page, it&apos;s in
@@ -104,18 +67,29 @@ export default async function Home({
       <Link href={`/debug?url=${baseUrl}`} className="underline">
         Debug
       </Link>
-      <FrameContainer
-        postUrl="/frames"
-        state={state}
-        previousFrame={previousFrame}
-      >
-        <FrameImage>
-          <div tw="w-full h-full bg-slate-700 text-white justify-center items-center">
-            {r_user && l_user ? `@${l_user.fid} vs @${r_user.fid}` : "home"}
-          </div>
-        </FrameImage>
-        <FrameButton action="post">Play</FrameButton>
-      </FrameContainer>
+      <Home state={state} previousFrame={previousFrame} />
     </div>
   );
+}
+
+async function getFrame(
+  previousFrame: PreviousFrame<State>,
+  frameMessage: FrameActionDataParsedAndHubContext,
+  state: State
+) {
+  let user;
+  try {
+    user = await getUser(frameMessage.requesterFid);
+  } catch (error) {
+    console.error("Failed to get user:", error);
+  }
+  if (!user) {
+    user = await setUserRanking(frameMessage.requesterFid);
+  }
+
+  return Play({
+    previousFrame: previousFrame,
+    state: state,
+    frameMessage: frameMessage,
+  });
 }
