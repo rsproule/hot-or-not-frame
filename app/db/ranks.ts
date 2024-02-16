@@ -85,7 +85,7 @@ export async function getLeaderBoard(
   for (let i = 0; i < r.length; i += 2) {
     let userRanking: UserRanking = {
       fid: r[i]!,
-      score: r[i + 1]!,
+      score: Number(r[i + 1]!.toFixed(2)),
       ranking: paginator + i / 2,
     };
     leaderboard.push(userRanking);
