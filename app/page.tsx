@@ -11,22 +11,19 @@ import {
 } from "frames.js/next/server";
 import Link from "next/link";
 import { DEBUG_HUB_OPTIONS } from "./debug/constants";
-import { getTokenUrl } from "frames.js";
+import {
+  UserRanking,
+  getRandomUser,
+  getUser,
+  setUserRanking,
+} from "./db/ranks";
 
-type State = {
-  active: string;
-  total_button_presses: number;
-};
+type State = {};
 
-const initialState = { active: "1", total_button_presses: 0 };
+const initialState = {};
 
 const reducer: FrameReducer<State> = (state, action) => {
-  return {
-    total_button_presses: state.total_button_presses + 1,
-    active: action.postBody?.untrustedData.buttonIndex
-      ? String(action.postBody?.untrustedData.buttonIndex)
-      : "1",
-  };
+  return state;
 };
 
 // This is a react server component only
@@ -43,7 +40,7 @@ export default async function Home({
   if (frameMessage && !frameMessage?.isValid) {
     throw new Error("Invalid frame payload");
   }
-  console.log({frameMessage});
+  console.log({ frameMessage });
 
   const [state, dispatch] = useFramesReducer<State>(
     reducer,
@@ -55,6 +52,11 @@ export default async function Home({
   // example: load the users credentials & check they have an NFT
 
   console.log("info: state is:", state);
+
+  const baseUrl = process.env.NEXT_PUBLIC_HOST || "http://localhost:3000";
+
+  let l_user;
+  let r_user;
 
   if (frameMessage) {
     const {
@@ -71,10 +73,28 @@ export default async function Home({
       requesterUserData,
     } = frameMessage;
 
-    console.log("info: frameMessage is:", frameMessage);
-  }
+    // if the user already exists, present them the side by side
 
-  const baseUrl = process.env.NEXT_PUBLIC_HOST || "http://localhost:3000";
+    let user;
+    try {
+      user = await getUser(requesterFid);
+    } catch (error) {
+      console.error("Failed to get user:", error);
+    }
+    if (user) {
+      console.log("info: frameMessage is:", frameMessage);
+      let occlusion = [
+        frameMessage?.requesterFid,
+        // ...(state.l_user ? [state.l_user.fid] : []),
+        // ...(state.r_user ? [state.r_user.fid] : []),
+      ];
+      l_user = await getRandomUser(occlusion);
+      r_user = await getRandomUser([...occlusion, l_user.fid]);
+    } else {
+      let newUser = await setUserRanking(requesterFid);
+      console.log("info: newUser is:", newUser);
+    }
+  }
 
   // then, when done, return next frame
   return (
@@ -91,12 +111,10 @@ export default async function Home({
       >
         <FrameImage>
           <div tw="w-full h-full bg-slate-700 text-white justify-center items-center">
-            Home test 
+            {r_user && l_user ? `@${l_user.fid} vs @${r_user.fid}` : "home"}
           </div>
         </FrameImage>
-        <FrameButton action="post" target={`http://localhost:3000`}>
-          Refresh
-        </FrameButton>
+        <FrameButton action="post">Play</FrameButton>
       </FrameContainer>
     </div>
   );
