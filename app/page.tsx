@@ -1,8 +1,4 @@
 import {
-  FrameButton,
-  FrameContainer,
-  FrameImage,
-  FrameInput,
   FrameReducer,
   NextServerPageProps,
   getPreviousFrame,
@@ -10,23 +6,19 @@ import {
   getFrameMessage,
   PreviousFrame,
 } from "frames.js/next/server";
-import Link from "next/link";
 import { DEBUG_HUB_OPTIONS } from "./debug/constants";
-import {
-  UserRanking,
-  getRandomUser,
-  getUser,
-  setUserRanking,
-} from "./db/ranks";
+import { UserRanking, getUser, setUserRanking } from "./db/ranks";
 import { Home } from "./components/frames/Home";
 import { Play } from "./components/frames/Play";
 import { FrameActionDataParsedAndHubContext } from "frames.js";
 
 // Not using any local state, loading everything from server.
-type State = {};
-const initialState = {
-  seen: [],
+export type State = {
+  leftUser?: number;
+  rightUser?: number;
 };
+
+const initialState = {};
 
 const reducer: FrameReducer<State> = (state, previousFrame) => {
   return state;
@@ -38,6 +30,7 @@ export default async function Root({
   searchParams,
 }: NextServerPageProps) {
   const previousFrame = getPreviousFrame<State>(searchParams);
+  const [state] = useFramesReducer<State>(reducer, initialState, previousFrame);
 
   const frameMessage = await getFrameMessage(previousFrame.postBody, {
     ...DEBUG_HUB_OPTIONS,
@@ -47,29 +40,21 @@ export default async function Root({
     throw new Error("Invalid frame payload");
   }
 
-  // not used
-  const [state] = useFramesReducer<State>(reducer, initialState, previousFrame);
-
-  // Here: do a server side side effect either sync or async (using await), such as minting an NFT if you want.
-  // example: load the users credentials & check they have an NFT
-
   if (frameMessage) {
     // put the state machine switch statement in here
+    let rankMatch = await getRankMatch(state);
+    if (rankMatch) {
+      if (frameMessage.buttonIndex === 1) {
+        await applyMatchResult(rankMatch.rightUser, rankMatch.leftUser);
+      } else if (frameMessage.buttonIndex === 2) {
+        await applyMatchResult(rankMatch.leftUser, rankMatch.rightUser);
+      }
+    }
+
     return await getFrame(previousFrame, frameMessage, state);
   }
 
-  // return the home frame if there is nothing here
-  const baseUrl = process.env.NEXT_PUBLIC_HOST || "http://localhost:3000";
-  return (
-    <div className="p-4">
-      frames.js starter kit. The Template Frame is on this page, it&apos;s in
-      the html meta tags (inspect source).{" "}
-      <Link href={`/debug?url=${baseUrl}`} className="underline">
-        Debug
-      </Link>
-      <Home state={state} previousFrame={previousFrame} />
-    </div>
-  );
+  return <Home state={state} previousFrame={previousFrame} />;
 }
 
 async function getFrame(
@@ -85,6 +70,7 @@ async function getFrame(
   }
   if (!user) {
     user = await setUserRanking(frameMessage.requesterFid);
+    console.log("User not found, created new user:", user);
   }
 
   return Play({
@@ -92,4 +78,73 @@ async function getFrame(
     state: state,
     frameMessage: frameMessage,
   });
+}
+
+async function getRankMatch(
+  state: State
+): Promise<{ leftUser: UserRanking; rightUser: UserRanking } | undefined> {
+  const leftUserId = state?.leftUser;
+  const rightUserId = state?.rightUser;
+  if (
+    !leftUserId ||
+    !rightUserId ||
+    isNaN(Number(leftUserId)) ||
+    isNaN(Number(rightUserId))
+  ) {
+    console.error("Invalid user ids:", leftUserId, rightUserId);
+    return undefined;
+  }
+
+  let leftUser, rightUser;
+  try {
+    leftUser = await getUser(Number(leftUserId));
+    rightUser = await getUser(Number(rightUserId));
+  } catch (error) {
+    console.error("Failed to get users:", error);
+    return undefined;
+  }
+
+  return {
+    leftUser,
+    rightUser,
+  };
+}
+
+async function applyMatchResult(loser: UserRanking, winner: UserRanking) {
+  let loserScoreBefore = loser.score;
+  let winnerScoreBefore = winner.score;
+  // Score rating constants
+  const K_FACTOR = 32;
+  const EXPECTED_SCORE_DIVISOR = 400;
+
+  // Calculate expected scores
+  const expectedScoreLoser =
+    1 /
+    (1 +
+      Math.pow(
+        10,
+        (winnerScoreBefore - loserScoreBefore) / EXPECTED_SCORE_DIVISOR
+      ));
+  const expectedScoreWinner =
+    1 /
+    (1 +
+      Math.pow(
+        10,
+        (loserScoreBefore - winnerScoreBefore) / EXPECTED_SCORE_DIVISOR
+      ));
+
+  // Update score ratings
+  const updatedLoserScore =
+    Number(loserScoreBefore) + K_FACTOR * (0 - Number(expectedScoreLoser));
+  const updatedWinnerScore =
+    Number(winnerScoreBefore) + K_FACTOR * (1 - Number(expectedScoreWinner));
+
+  // Update user scores
+  loser.score = updatedLoserScore;
+  winner.score = updatedWinnerScore;
+
+  // Save updated scores
+  let loserNewScore = await setUserRanking(loser.fid, loser.score);
+  let winnerNewScore = await setUserRanking(winner.fid, winner.score);
+  return { loserNewScore, winnerNewScore };
 }

@@ -4,11 +4,9 @@ import {
   PreviousFrame,
   FrameButton,
 } from "frames.js/next/server";
-import Link from "next/link";
-import { State } from "swr";
-import { getLeaderBoard } from "../../db/ranks";
-import { NeynarAPIClient } from "@neynar/nodejs-sdk";
+import { getLeaderBoard, getTotalUsers } from "../../db/ranks";
 import { User } from "@neynar/nodejs-sdk/build/neynar-api/v2";
+import { State } from "../../page";
 const baseUrl = process.env.NEXT_PUBLIC_HOST || "http://localhost:3000";
 
 export interface FrameContext {
@@ -18,7 +16,7 @@ export interface FrameContext {
 
 export async function Home({ state, previousFrame }: FrameContext) {
   // get the top ranking users
-  const leaderBoard = await getLeaderBoard(5, 0);
+  const leaderBoard = await getLeaderBoard(4, 0);
   const users = await Promise.all(
     leaderBoard.map(async (user) => {
       const response = await fetch(`${baseUrl}/api/user?fid=${user.fid}`);
@@ -26,6 +24,7 @@ export async function Home({ state, previousFrame }: FrameContext) {
       return { ...user, userDetails };
     })
   );
+  const totalPlayer = await getTotalUsers();
   return (
     <FrameContainer
       postUrl="/frames"
@@ -34,12 +33,12 @@ export async function Home({ state, previousFrame }: FrameContext) {
     >
       <FrameImage>
         <div tw="w-full h-full bg-slate-700 text-white flex flex-col items-center justify-center">
-          <div tw="text-2xl mb-4">Top players:</div>
+          <div tw="text-8xl flex mb-10">Top players out of {totalPlayer}:</div>
           {users
             .sort((a, b) => a.ranking - b.ranking)
             .map((user) => (
-              <div key={user.fid} tw="mb-2">
-                {`${user.ranking}: ${user.userDetails.username} - ${user.score}`}
+              <div key={user.fid} tw="mb-2 text-4xl">
+                {`${user.ranking + 1}: ${user.userDetails.username} - ${user.score}`}
               </div>
             ))}
         </div>

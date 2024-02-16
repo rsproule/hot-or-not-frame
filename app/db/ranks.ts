@@ -12,8 +12,9 @@ export async function setUserRanking(
   ranking: number | undefined = undefined
 ): Promise<number> {
   let scoreMember = { score: ranking ?? USER_INITIAL_RANKING, member: fid };
+  console.log("Setting user", fid, "with ranking", scoreMember);
   let addResponse = await kv.zadd(TABLE_NAME, scoreMember);
-  if (!addResponse) {
+  if (addResponse === null) {
     throw new Error("Failed to add user ranking");
   }
   return addResponse;
@@ -28,7 +29,7 @@ export async function getUser(user: number): Promise<UserRanking> {
 }
 
 export async function getUserRanking(user: number): Promise<number> {
-  let r = await kv.zrank(TABLE_NAME, user);
+  let r = await kv.zrevrank(TABLE_NAME, user);
   if (r === null) {
     throw new Error("Failed to get user ranking");
   }
@@ -76,9 +77,15 @@ export async function getLeaderBoard(
   limit: number,
   paginator: number = 0
 ): Promise<UserRanking[]> {
-  let r: number[] = await kv.zrange(TABLE_NAME, paginator, paginator + limit, {
-    withScores: true,
-  });
+  let r: number[] = await kv.zrange(
+    TABLE_NAME,
+    paginator,
+    paginator + limit - 1,
+    {
+      withScores: true,
+      rev: true,
+    }
+  );
   let leaderboard: UserRanking[] = [];
   for (let i = 0; i < r.length; i += 2) {
     let userRanking: UserRanking = {
