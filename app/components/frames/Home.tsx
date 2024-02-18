@@ -26,7 +26,7 @@ export async function Home({ state, previousFrame }: FrameContext) {
       return { ...user, userDetails };
     })
   );
-  const totalPlayer = await getTotalUsers();
+  const totalPlayers = await getTotalUsers();
   return (
     <div>
       <Stats limit={1000} />
@@ -39,8 +39,7 @@ export async function Home({ state, previousFrame }: FrameContext) {
           return (
           <div tw="w-full h-full bg-slate-700 text-white flex flex-col items-center justify-center">
             <div tw="text-8xl flex mb-10">
-              Top ranked casters out of{" "}
-              <span tw="font-bold">{totalPlayer}</span> total players:
+              Top casters of {totalPlayers} total players:
             </div>
             {users
               .sort((a, b) => a.ranking - b.ranking)
