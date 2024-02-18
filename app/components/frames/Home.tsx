@@ -36,9 +36,8 @@ export async function Home({ state, previousFrame }: FrameContext) {
         previousFrame={previousFrame}
       >
         <FrameImage>
-          return (
           <div tw="w-full h-full bg-slate-700 text-white flex flex-col items-center justify-center">
-            <div tw="text-8xl flex mb-10">
+            <div tw="text-6xl flex mb-10">
               Top casters of {totalPlayers} total players:
             </div>
             {users
