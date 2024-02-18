@@ -4,10 +4,11 @@ import {
   PreviousFrame,
   FrameButton,
 } from "frames.js/next/server";
-import { getLeaderBoard, getTotalUsers } from "../../db/ranks";
-import { User } from "@neynar/nodejs-sdk/build/neynar-api/v2";
 import { State } from "../../page";
 import { Stats } from "../Stats";
+import { getLeaderBoard, getTotalUsers } from "../../db/ranks";
+import { User } from "@neynar/nodejs-sdk/build/neynar-api/v2";
+
 const baseUrl = process.env.NEXT_PUBLIC_HOST || "http://localhost:3000";
 
 export interface FrameContext {
@@ -28,16 +29,18 @@ export async function Home({ state, previousFrame }: FrameContext) {
   const totalPlayer = await getTotalUsers();
   return (
     <div>
-      <Stats />
+      <Stats limit={1000} />
       <FrameContainer
         postUrl="/frames"
         state={state}
         previousFrame={previousFrame}
       >
         <FrameImage>
+          return (
           <div tw="w-full h-full bg-slate-700 text-white flex flex-col items-center justify-center">
             <div tw="text-8xl flex mb-10">
-              Top ranked casters out of {totalPlayer} total players:
+              Top ranked casters out of{" "}
+              <span tw="font-bold">{totalPlayer}</span> total players:
             </div>
             {users
               .sort((a, b) => a.ranking - b.ranking)

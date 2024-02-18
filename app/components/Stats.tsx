@@ -2,8 +2,12 @@ import { User } from "@neynar/nodejs-sdk/build/neynar-api/v2";
 import { getLeaderBoard, getTotalUsers } from "../db/ranks";
 const baseUrl = process.env.NEXT_PUBLIC_HOST || "http://localhost:3000";
 
-export async function Stats() {
-  const leaderBoard = await getLeaderBoard(1000, 0);
+interface StatsProps {
+  limit: number;
+}
+export async function Stats({ limit }: StatsProps) {
+  console.log("stats", limit);
+  const leaderBoard = await getLeaderBoard(limit, 0);
   const users = await Promise.all(
     leaderBoard.map(async (user) => {
       const response = await fetch(`${baseUrl}/api/user?fid=${user.fid}`);
@@ -15,7 +19,8 @@ export async function Stats() {
   return (
     <div tw="w-full h-full bg-slate-700 text-white flex flex-col items-center justify-center">
       <div tw="text-8xl flex mb-10">
-        Top ranked casters out of {totalPlayer} total players:
+        Top ranked casters out of <span tw="font-bold">{totalPlayer}</span>{" "}
+        total players:
       </div>
       {users
         .sort((a, b) => a.ranking - b.ranking)
