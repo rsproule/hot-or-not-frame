@@ -16,6 +16,15 @@ export async function setUserRanking(
   return addResponse;
 }
 
+export async function logVote(winner: number, loser: number): Promise<number> {
+  let timestamp = Date.now();
+  let p = await kv.lpush("votes", `${timestamp}|${winner}|${loser}`);
+  if (p === null) {
+    throw new Error("Failed to log vote");
+  }
+  return p;
+}
+
 export async function getUser(user: number): Promise<UserRanking> {
   let rank = await getUserRanking(user);
   let score = await getUserScore(user);

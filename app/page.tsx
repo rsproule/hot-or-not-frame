@@ -7,7 +7,7 @@ import {
   PreviousFrame,
 } from "frames.js/next/server";
 import { DEBUG_HUB_OPTIONS } from "./debug/constants";
-import { UserRanking, getUser, setUserRanking } from "./db/ranks";
+import { UserRanking, getUser, logVote, setUserRanking } from "./db/ranks";
 import { Home } from "./components/frames/Home";
 import { Play } from "./components/frames/Play";
 import { FrameActionDataParsedAndHubContext } from "frames.js";
@@ -25,9 +25,7 @@ const reducer: FrameReducer<State> = (state, previousFrame) => {
 };
 
 // This is a react server component only
-export default async function Root({
-  searchParams,
-}: NextServerPageProps) {
+export default async function Root({ searchParams }: NextServerPageProps) {
   const previousFrame = getPreviousFrame<State>(searchParams);
   const [state] = useFramesReducer<State>(reducer, initialState, previousFrame);
 
@@ -143,6 +141,7 @@ async function applyMatchResult(loser: UserRanking, winner: UserRanking) {
   winner.score = updatedWinnerScore;
 
   // Save updated scores
+  await logVote(winner.fid, loser.fid);
   let loserNewScore = await setUserRanking(loser.fid, loser.score);
   let winnerNewScore = await setUserRanking(winner.fid, winner.score);
   return { loserNewScore, winnerNewScore };
