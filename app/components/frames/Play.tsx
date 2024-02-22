@@ -58,7 +58,7 @@ function UserDetails({ user }: { user: User }) {
   return (
     <div tw="flex flex-col justify-center items-center">
       {/* @ts-ignore */}
-      <img width={150} height={150} src={user.pfp.url} alt="Image" />
+      <img width={200} height={200} src={user.pfp.url} alt="Image" />
       <div tw="flex">@{user.username}</div>
     </div>
   );
